@@ -1,0 +1,1 @@
+configs copied from https://github.com/hendrikmi/dotfiles.git and modified
