@@ -18,7 +18,6 @@ configs copied from https://github.com/hendrikmi/dotfiles.git and modified
 | `opt+delete` | Delete word forward |
 | `cmd+backspace` | Delete to beginning of line |
 
-> **SendKey vs SendString**: Navigation uses `SendKey { key="b", mods="META" }` instead of `SendString("\x1bb")`. Both result in the same escape sequence, but `SendKey` sends a proper key event that respects the terminal's current encoding mode — more correct, more readable.
 
 ---
 
@@ -30,6 +29,7 @@ configs copied from https://github.com/hendrikmi/dotfiles.git and modified
 | `cmd+w` | Close tab (no confirm) |
 | `cmd+1–9` | Switch to tab 1–9 |
 | `cmd+shift+r` | Rename current tab |
+| `cmd+e` | Tab navigator — fuzzy search all open tabs |
 
 ---
 
@@ -45,26 +45,47 @@ configs copied from https://github.com/hendrikmi/dotfiles.git and modified
 | `cmd+down` | Focus pane below |
 | `cmd+z` | Toggle zoom (maximize current pane) |
 | `cmd+x` | Close current pane (asks confirm) |
+| `cmd+s` | **Pane Select** — visual labels on all panes, press letter to jump |
 
 ---
 
-### Font Size
+### Workspaces (like tmux sessions — native WezTerm)
 
 | Key | Action |
 |-----|--------|
-| `cmd+=` | Increase font size |
-| `cmd+-` | Decrease font size |
-| `cmd+0` | Reset font size |
+| `cmd+o` | Fuzzy workspace switcher |
+| `cmd+shift+n` | Create / switch to a named workspace |
+| `ctrl+shift+]` | Next workspace |
+| `ctrl+shift+[` | Previous workspace |
+
+Workspaces group tabs together. Switch between them without closing anything.
+The active workspace name shows in the right status bar (blue).
 
 ---
 
-### Scrollback
+### Scrollback & Prompts
 
 | Key | Action |
 |-----|--------|
 | `cmd+k` | Clear scrollback (keeps visible) |
 | `shift+pageup` | Scroll up one page |
 | `shift+pagedown` | Scroll down one page |
+| `ctrl+shift+up` | Jump to **previous** shell prompt in scrollback (requires shell integration) |
+| `ctrl+shift+down` | Jump to **next** shell prompt in scrollback (requires shell integration) |
+
+---
+
+### Launch Menu
+
+`cmd+l` — opens a fuzzy launcher with predefined commands:
+- Python REPL (`python3`)
+- IPython REPL
+- Node REPL
+- Top (system monitor)
+- Bash
+- SSH — RunPod (reads `$RUNPOD_HOST`)
+
+Add/edit entries in `config.lua` under `config.launch_menu`.
 
 ---
 
@@ -90,15 +111,18 @@ Activate with `ctrl+shift+x`. Navigate terminal output without a mouse.
 
 ### Quick Select
 
-Activate with `cmd+shift+space`. Instantly highlights common patterns (URLs, git hashes, file paths, IPs, UUIDs) — press the shown letter to copy it to clipboard.
-
-Useful for: copying a URL from output, grabbing a git commit hash, copying a file path from a stack trace.
+`cmd+shift+space` — instantly highlights URLs, git hashes, file paths, IPs, UUIDs.  
+Press the shown letter to copy to clipboard. Great for grabbing git commit hashes from logs.
 
 ---
 
-### Search Scrollback
+### Font Size
 
-`cmd+f` — opens incremental search through all scrollback output.
+| Key | Action |
+|-----|--------|
+| `cmd+=` | Increase font size |
+| `cmd+-` | Decrease font size |
+| `cmd+0` | Reset font size |
 
 ---
 
@@ -109,7 +133,7 @@ Useful for: copying a URL from output, grabbing a git commit hash, copying a fil
 | `cmd+f` | Search scrollback |
 | `cmd+p` | Command palette |
 | `cmd+shift+f` | Toggle fullscreen |
-| `ctrl+enter` | Send `ctrl+enter` escape (for editors like Neovim) |
+| `ctrl+enter` | Send `ctrl+enter` escape (Neovim etc.) |
 | `shift+enter` | Send `shift+enter` escape |
 
 ---
@@ -124,23 +148,67 @@ Useful for: copying a URL from output, grabbing a git commit hash, copying a fil
 
 ---
 
+## Shell Integration
+
+Source `shell-integration.zsh` in your `~/.zshrc` to unlock prompt-aware features:
+
+```sh
+# In ~/.zshrc:
+source ~/.config/wezterm/shell-integration.zsh
+```
+
+**What it enables:**
+- `ctrl+shift+up/down` jumps between shell prompts in scrollback (`ScrollToPrompt`)
+- New tabs/panes inherit the current working directory (OSC 7)
+- Right status bar shows the current directory
+- Semantic zones: select entire command output as a block in copy mode
+- User vars: `WEZTERM_PROG`, `WEZTERM_HOST`, `WEZTERM_USER` for scripting
+
+---
+
 ## Right Status Bar
 
-The right side of the tab bar shows:
-- **Z** (gold) — current pane is zoomed (`cmd+z`)
-- **session name** (teal) — when tmux is the foreground process, shows the pane/terminal title (populated by tmux's `set-titles`)
-- **HH:MM** — current time
+Right-to-left:
+- **Time** (HH:MM)
+- **CWD** — shortened path (e.g. `~/p/dev/foo`)
+- **Tmux session** (teal) — when inside tmux, shows session name
+- **Z** (gold) — when pane is zoomed (`cmd+z`)
+- **Workspace** (blue) — active workspace name (hidden when `main`)
 
-### Tmux session identifier setup
+---
 
-To make WezTerm show which tmux session you're in (useful when you have multiple tabs each running a different session), add to your `~/.tmux.conf`:
+## Tmux Session Identifier
+
+To show tmux session name in WezTerm's status bar, add to `~/.tmux.conf`:
 
 ```sh
 set-option -g set-titles on
-set-option -g set-titles-string "#S"   # shows session name; use "#S:#W" for session:window
+set-option -g set-titles-string "#S"   # session name only; use "#S:#W" for session:window
 ```
 
-With this, each WezTerm tab running a different `tmux attach -t <name>` will display its session name in the right status.
+If using tmux inside WezTerm (not using WezTerm workspaces), also add:
+```sh
+set -g allow-passthrough on   # required for OSC user vars to work through tmux
+```
+
+---
+
+## Workspaces vs tmux Sessions
+
+| Feature | WezTerm Workspaces | tmux Sessions |
+|---------|-------------------|---------------|
+| Scope | WezTerm tabs/panes | Any terminal |
+| Persistence after close | No | Yes (tmux server stays alive) |
+| Keybinding to switch | `cmd+o` (fuzzy) | Depends on your tmux config |
+| CWD in status bar | Yes (native) | Needs `set-titles` |
+| Use together | Can run tmux inside WezTerm panes | — |
+
+---
+
+## Scrollback
+
+Default increased to **10,000 lines** (from WezTerm default 3,500).  
+`scroll_to_bottom_on_input = true` — typing always brings you back to the bottom.
 
 ---
 
@@ -157,6 +225,7 @@ export WEZTERM_THEME=onedark   # One Dark
 
 ## Background
 
-Uses a local image at `~/.config/wezterm/dark-desert.jpg` with a semi-transparent dark overlay. To change the background swap out the image file or edit `config.background` in `config.lua`.
+Uses a local image at `~/.config/wezterm/dark-desert.jpg` with a semi-transparent dark overlay.  
+Swap the image or edit `config.background` in `config.lua` to change it.
 
 Config auto-reloads on save — no restart needed.

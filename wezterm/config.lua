@@ -13,9 +13,12 @@ config.window_decorations = "RESIZE"
 config.check_for_updates = false
 config.use_fancy_tab_bar = true
 config.tab_bar_at_bottom = false
+config.hide_tab_bar_if_only_one_tab = true
 config.font_size = 12.5
 config.font = wezterm.font("Cascadia Code", { weight = "Bold" })
 config.enable_tab_bar = true
+config.scrollback_lines = 10000
+config.scroll_to_bottom_on_input = true
 config.window_padding = {
 	left = 7,
 	right = 0,
@@ -123,6 +126,43 @@ config.keys = {
 	-- quick select: auto-highlights URLs, git hashes, file paths, IPs for one-key copy
 	{ key = "Space", mods = "CMD|SHIFT", action = wezterm.action.QuickSelect },
 
+	-- scroll to previous/next shell prompt (requires shell integration — see shell-integration.zsh)
+	{ key = "UpArrow", mods = "CTRL|SHIFT", action = wezterm.action.ScrollToPrompt(-1) },
+	{ key = "DownArrow", mods = "CTRL|SHIFT", action = wezterm.action.ScrollToPrompt(1) },
+
+	-- tab navigator: fuzzy search across all open tabs
+	{ key = "e", mods = "CMD", action = wezterm.action.ShowTabNavigator },
+
+	-- pane select: visual labels on each pane, press letter to focus
+	{ key = "s", mods = "CMD", action = wezterm.action.PaneSelect({ alphabet = "asdfjkl;", mode = "Activate" }) },
+
+	-- workspaces: fuzzy switcher / create new named workspace
+	{
+		key = "o",
+		mods = "CMD",
+		action = wezterm.action.ShowLauncherArgs({ flags = "WORKSPACES|FUZZY" }),
+	},
+	{
+		key = "n",
+		mods = "CMD|SHIFT",
+		action = wezterm.action.PromptInputLine({
+			description = "New workspace name:",
+			action = wezterm.action_callback(function(window, pane, name)
+				if name and name ~= "" then
+					window:perform_action(
+						wezterm.action.SwitchToWorkspace({ name = name }),
+						pane
+					)
+				end
+				end),
+		}),
+	},
+	{ key = "]", mods = "CTRL|SHIFT", action = wezterm.action.SwitchWorkspaceRelative(1) },
+	{ key = "[", mods = "CTRL|SHIFT", action = wezterm.action.SwitchWorkspaceRelative(-1) },
+
+	-- launch menu
+	{ key = "l", mods = "CMD", action = wezterm.action.ShowLauncherArgs({ flags = "LAUNCH_MENU_ITEMS|FUZZY" }) },
+
 	-- misc
 	{ key = "f", mods = "CMD", action = wezterm.action.Search("CurrentSelectionOrEmptyString") },
 	{ key = "p", mods = "CMD", action = wezterm.action.ActivateCommandPalette },
@@ -143,6 +183,14 @@ config.mouse_bindings = {
 		action = wezterm.action.OpenLinkAtMouseCursor,
 	},
 }
+config.launch_menu = {
+	{ label = "Python REPL", args = { "python3" } },
+	{ label = "IPython REPL", args = { "ipython" } },
+	{ label = "Node REPL", args = { "node" } },
+	{ label = "Top (system monitor)", args = { "top" } },
+	{ label = "Bash", args = { "bash" } },
+}
+
 -- from: https://akos.ma/blog/adopting-wezterm/
 config.hyperlink_rules = {
 	-- Matches: a URL in parens: (URL)

@@ -11,4 +11,7 @@ local success, stdout, stderr = wezterm.run_child_process({ os.getenv("SHELL"), 
 local selected_theme = stdout:gsub("%s+", "") -- Remove all whitespace characters including newline
 config.color_scheme = themes[selected_theme]
 
+-- Default workspace name
+config.default_workspace = "main"
+
 return config

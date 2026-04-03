@@ -6,7 +6,7 @@ wezterm.on("gui-startup", function()
   window:gui_window():set_window_size({ width = 1000, height = 1000 })
 end)
 
--- Right status: shows zoom indicator + tmux session (if active) + current time
+-- Right status: workspace | Z (zoomed) | tmux session | cwd | time
 wezterm.on("update-right-status", function(window, pane)
   local is_zoomed = false
   for _, pane_info in ipairs(window:active_tab():panes_with_info()) do
@@ -16,22 +16,41 @@ wezterm.on("update-right-status", function(window, pane)
     end
   end
 
-  -- pane title is set by tmux via `set-titles on` / `set-titles-string "#S"` in .tmux.conf
-  -- When tmux is active this shows the session name; otherwise shows process name
+  -- workspace name (skip "default")
+  local workspace = window:active_workspace()
+  local ws = (workspace and workspace ~= "default") and (" " .. workspace .. " ") or ""
+
+  -- current working directory (shortened: ~/projects/foo -> ~/p/foo)
+  local cwd_obj = pane:get_current_working_dir()
+  local cwd = ""
+  if cwd_obj then
+    local path = cwd_obj.file_path or tostring(cwd_obj)
+    -- replace HOME with ~
+    path = path:gsub("^" .. os.getenv("HOME"), "~")
+    -- shorten middle segments: ~/projects/foo/bar -> ~/p/foo/bar
+    path = path:gsub("(/[^/])[^/]+(/)", "%1%2")
+    cwd = " " .. path .. " "
+  end
+
+  -- tmux session name via pane title (set in .tmux.conf with set-titles-string "#S")
   local pane_title = pane:get_title()
   local proc = pane:get_foreground_process_name() or ""
   local in_tmux = proc:find("tmux") ~= nil
+  local session = (in_tmux and pane_title ~= "") and (" " .. pane_title .. " ") or ""
 
   local zoom = is_zoomed and " Z " or ""
-  local session = (in_tmux and pane_title ~= "") and (" " .. pane_title .. " ") or ""
   local time = wezterm.strftime(" %H:%M ")
 
   window:set_right_status(wezterm.format({
-    { Foreground = { Color = is_zoomed and "#f0a500" or "#666666" } },
+    { Foreground = { Color = "#7aa2f7" } },
+    { Text = ws },
+    { Foreground = { Color = is_zoomed and "#f0a500" or "#555555" } },
     { Text = zoom },
     { Foreground = { Color = "#4e9a8a" } },
     { Text = session },
-    { Foreground = { Color = "#555555" } },
+    { Foreground = { Color = "#666666" } },
+    { Text = cwd },
+    { Foreground = { Color = "#444444" } },
     { Text = time },
   }))
 end)
