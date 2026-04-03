@@ -6,6 +6,36 @@ wezterm.on("gui-startup", function()
   window:gui_window():set_window_size({ width = 1000, height = 1000 })
 end)
 
+-- Right status: shows zoom indicator + tmux session (if active) + current time
+wezterm.on("update-right-status", function(window, pane)
+  local is_zoomed = false
+  for _, pane_info in ipairs(window:active_tab():panes_with_info()) do
+    if pane_info.is_active and pane_info.is_zoomed then
+      is_zoomed = true
+      break
+    end
+  end
+
+  -- pane title is set by tmux via `set-titles on` / `set-titles-string "#S"` in .tmux.conf
+  -- When tmux is active this shows the session name; otherwise shows process name
+  local pane_title = pane:get_title()
+  local proc = pane:get_foreground_process_name() or ""
+  local in_tmux = proc:find("tmux") ~= nil
+
+  local zoom = is_zoomed and " Z " or ""
+  local session = (in_tmux and pane_title ~= "") and (" " .. pane_title .. " ") or ""
+  local time = wezterm.strftime(" %H:%M ")
+
+  window:set_right_status(wezterm.format({
+    { Foreground = { Color = is_zoomed and "#f0a500" or "#666666" } },
+    { Text = zoom },
+    { Foreground = { Color = "#4e9a8a" } },
+    { Text = session },
+    { Foreground = { Color = "#555555" } },
+    { Text = time },
+  }))
+end)
+
 -- wezterm.on("window-resized", function(window, pane)
 -- 	readjust_font_size(window, pane)
 -- end)
